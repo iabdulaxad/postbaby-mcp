@@ -1,8 +1,9 @@
 pipeline {
     agent any
 
-    tools {
-        jdk 'JDK17'  
+    environment {
+        JAVA_HOME = '/usr/lib/jvm/java-21-openjdk-amd64'
+        PATH = "${JAVA_HOME}/bin:${env.PATH}"
     }
 
     options {
@@ -17,7 +18,7 @@ pipeline {
                 echo "--- Initializing Build ---"
                 echo "Workspace: ${env.WORKSPACE}"
                 echo "Build Number: ${env.BUILD_NUMBER}"
-                sh 'java -version'   // should now show 17
+                sh 'java -version'
                 sh 'chmod +x mvnw'
                 sh './mvnw -version'
             }
