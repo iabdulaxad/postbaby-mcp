@@ -1,0 +1,17 @@
+# $schema: https://raw.githubusercontent.com/knative/func/70529438/schema/func_yaml-schema.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/knative/func/70529438/schema/func_yaml-schema.json
+specVersion: 0.36.0
+name: workload-ai-test-knative
+runtime: springboot
+created: 2026-04-15T12:44:23.91133+05:00
+invoke: http
+build:
+  buildEnvs:
+  - name: BP_NATIVE_IMAGE
+    value: "false"
+  - name: BP_JVM_VERSION
+    value: "21"
+deploy:
+  healthEndpoints:
+    liveness: /actuator/health
+    readiness: /actuator/health
