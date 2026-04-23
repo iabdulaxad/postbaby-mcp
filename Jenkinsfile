@@ -6,39 +6,63 @@ pipeline {
         }
     }
 
+    options {
+        timestamps()
+        timeout(time: 30, unit: 'MINUTES')
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+    }
+
     environment {
         MAVEN_OPTS = '-Dmaven.repo.local=/var/maven/.m2/repository'
     }
 
     stages {
+        stage('Initialize') {
+            steps {
+                echo "--- Initializing Build ---"
+                echo "Workspace: ${env.WORKSPACE}"
+                echo "Build Number: ${env.BUILD_NUMBER}"
+                sh 'java -version'
+                sh 'mvn -version'
+            }
+        }
+
         stage('Checkout') {
             steps {
+                echo "--- Checking out source code ---"
                 checkout scm
             }
         }
 
         stage('Build') {
             steps {
-                dir('workload-ai-test-knative') {
-                    sh 'mvn clean package -DskipTests'
-                }
+                echo "--- Building project ---"
+                sh 'mvn clean package -DskipTests'
             }
         }
 
         stage('Test') {
             steps {
-                dir('workload-ai-test-knative') {
-                    sh 'mvn test'
-                }
+                echo "--- Running tests ---"
+                sh 'mvn test'
             }
         }
     }
 
     post {
         always {
-            dir('workload-ai-test-knative') {
-                junit 'target/surefire-reports/*.xml'
-            }
+            echo "--- Execution Finished ---"
+            junit 'target/surefire-reports/*.xml'
+            archiveArtifacts artifacts: 'target/*.jar', allowEmptyArchive: true
+        }
+        success {
+            echo "SUCCESS: Build and tests passed!"
+        }
+        failure {
+            echo "FAILURE: Build or tests failed. Check logs for details."
+        }
+        unstable {
+            echo "UNSTABLE: Some tests failed."
         }
     }
 }
