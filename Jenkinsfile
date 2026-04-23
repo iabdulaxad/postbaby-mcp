@@ -2,8 +2,9 @@ pipeline {
     agent any
 
     environment {
-        JAVA_HOME = '/usr/lib/jvm/java-21-openjdk-amd64'
-        PATH = "/usr/lib/jvm/java-21-openjdk-amd64/bin:${env.PATH}"
+        JAVA_HOME        = '/usr/lib/jvm/java-21-openjdk-amd64'
+        MAVEN_COMPILER   = '/usr/lib/jvm/java-21-openjdk-amd64/bin/javac'
+        MAVEN_OPTS       = '-Dmaven.compiler.fork=true -Dmaven.compiler.executable=/usr/lib/jvm/java-21-openjdk-amd64/bin/javac'
     }
 
     options {
@@ -17,7 +18,7 @@ pipeline {
             steps {
                 echo "--- Initializing Build ---"
                 sh 'echo "JAVA_HOME=$JAVA_HOME"'
-                sh 'which javac && javac -version'  // must now show 21
+                sh '$JAVA_HOME/bin/javac -version'   // verify directly
                 sh 'chmod +x mvnw'
                 sh './mvnw -version'
             }
@@ -51,14 +52,8 @@ pipeline {
             junit testResults: 'target/surefire-reports/*.xml', allowEmptyResults: true
             archiveArtifacts artifacts: 'target/*.jar', allowEmptyArchive: true
         }
-        success {
-            echo "SUCCESS: Build and tests passed!"
-        }
-        failure {
-            echo "FAILURE: Build or tests failed. Check logs for details."
-        }
-        unstable {
-            echo "UNSTABLE: Some tests failed."
-        }
+        success { echo "SUCCESS: Build and tests passed!" }
+        failure { echo "FAILURE: Build or tests failed. Check logs for details." }
+        unstable { echo "UNSTABLE: Some tests failed." }
     }
 }
