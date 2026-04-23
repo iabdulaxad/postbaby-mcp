@@ -16,13 +16,8 @@ pipeline {
         stage('Initialize') {
             steps {
                 echo "--- Initializing Build ---"
-                echo "Workspace: ${env.WORKSPACE}"
-                echo "Build Number: ${env.BUILD_NUMBER}"
-                // Diagnose exactly what javac Maven will use
                 sh 'echo "JAVA_HOME=$JAVA_HOME"'
-                sh 'which java && java -version'
-                sh 'which javac && javac -version'
-                sh 'ls /usr/lib/jvm/'
+                sh 'which javac && javac -version'  // must now show 21
                 sh 'chmod +x mvnw'
                 sh './mvnw -version'
             }
