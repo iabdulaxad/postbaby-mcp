@@ -51,7 +51,7 @@ pipeline {
             steps {
                 echo "--- Deploying application ---"
                 sh 'fuser -k ${APP_PORT}/tcp || true'
-                sh 'nohup $JAVA_HOME/bin/java -jar ${APP_JAR} --server.port=${APP_PORT} > app.log 2>&1 &'
+                sh 'nohup $JAVA_HOME/bin/java -jar ${APP_JAR} --server.port=${APP_PORT} --server.address=0.0.0.0 > app.log 2>&1 &'
                 sh 'sleep 5'
                 sh 'curl -f http://localhost:${APP_PORT}/actuator/health || (cat app.log && exit 1)'
                 echo "--- App is running on port ${APP_PORT} ---"
