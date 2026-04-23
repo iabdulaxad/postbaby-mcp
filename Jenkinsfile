@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         JAVA_HOME = '/usr/lib/jvm/java-21-openjdk-amd64'
-        PATH = "${JAVA_HOME}/bin:${env.PATH}"
+        PATH = "/usr/lib/jvm/java-21-openjdk-amd64/bin:${env.PATH}"
     }
 
     options {
@@ -18,7 +18,11 @@ pipeline {
                 echo "--- Initializing Build ---"
                 echo "Workspace: ${env.WORKSPACE}"
                 echo "Build Number: ${env.BUILD_NUMBER}"
-                sh 'java -version'
+                // Diagnose exactly what javac Maven will use
+                sh 'echo "JAVA_HOME=$JAVA_HOME"'
+                sh 'which java && java -version'
+                sh 'which javac && javac -version'
+                sh 'ls /usr/lib/jvm/'
                 sh 'chmod +x mvnw'
                 sh './mvnw -version'
             }
