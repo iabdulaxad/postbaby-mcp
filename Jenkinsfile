@@ -13,7 +13,7 @@ pipeline {
     }
 
     environment {
-        // MAVEN_OPTS = '-Dmaven.repo.local=/var/maven/.m2/repository'
+         MAVEN_OPTS = '-Dmaven.repo.local=/var/maven/.m2/repository'
     }
 
     stages {
