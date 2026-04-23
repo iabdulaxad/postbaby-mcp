@@ -2,9 +2,11 @@ pipeline {
     agent any
 
     environment {
-        JAVA_HOME        = '/usr/lib/jvm/java-21-openjdk-amd64'
-        MAVEN_COMPILER   = '/usr/lib/jvm/java-21-openjdk-amd64/bin/javac'
-        MAVEN_OPTS       = '-Dmaven.compiler.fork=true -Dmaven.compiler.executable=/usr/lib/jvm/java-21-openjdk-amd64/bin/javac'
+        JAVA_HOME      = '/usr/lib/jvm/java-21-openjdk-amd64'
+        MAVEN_COMPILER = '/usr/lib/jvm/java-21-openjdk-amd64/bin/javac'
+        MAVEN_OPTS     = '-Dmaven.compiler.fork=true -Dmaven.compiler.executable=/usr/lib/jvm/java-21-openjdk-amd64/bin/javac'
+        APP_PORT       = '8000'
+        APP_JAR        = 'target/function-0.0.1-SNAPSHOT.jar'
     }
 
     options {
@@ -18,7 +20,7 @@ pipeline {
             steps {
                 echo "--- Initializing Build ---"
                 sh 'echo "JAVA_HOME=$JAVA_HOME"'
-                sh '$JAVA_HOME/bin/javac -version'   // verify directly
+                sh '$JAVA_HOME/bin/javac -version'
                 sh 'chmod +x mvnw'
                 sh './mvnw -version'
             }
@@ -44,16 +46,27 @@ pipeline {
                 sh './mvnw test'
             }
         }
+
+        stage('Deploy') {
+            steps {
+                echo "--- Deploying application ---"
+                sh 'fuser -k ${APP_PORT}/tcp || true'
+                sh 'nohup $JAVA_HOME/bin/java -jar ${APP_JAR} --server.port=${APP_PORT} > app.log 2>&1 &'
+                sh 'sleep 5'
+                sh 'curl -f http://localhost:${APP_PORT}/actuator/health || (cat app.log && exit 1)'
+                echo "--- App is running on port ${APP_PORT} ---"
+            }
+        }
     }
 
     post {
         always {
             echo "--- Execution Finished ---"
             junit testResults: 'target/surefire-reports/*.xml', allowEmptyResults: true
-            archiveArtifacts artifacts: 'target/*.jar', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'target/*.jar, app.log', allowEmptyArchive: true
         }
-        success { echo "SUCCESS: Build and tests passed!" }
-        failure { echo "FAILURE: Build or tests failed. Check logs for details." }
+        success { echo "SUCCESS: Build, tests, and deployment passed!" }
+        failure { echo "FAILURE: Something failed. Check logs for details." }
         unstable { echo "UNSTABLE: Some tests failed." }
     }
 }
