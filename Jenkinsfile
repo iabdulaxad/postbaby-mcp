@@ -7,23 +7,15 @@ pipeline {
         buildDiscarder(logRotator(numToKeepStr: '10'))
     }
 
-    tools {
-        maven 'maven-3.9.6'
-        jdk 'jdk-21'
-    }
-
-    environment {
-         MAVEN_OPTS = '-Dmaven.repo.local=/var/maven/.m2/repository'
-    }
-
     stages {
         stage('Initialize') {
             steps {
                 echo "--- Initializing Build ---"
                 echo "Workspace: ${env.WORKSPACE}"
                 echo "Build Number: ${env.BUILD_NUMBER}"
+                sh 'chmod +x mvnw'
                 sh 'java -version'
-                sh 'mvn -version'
+                sh './mvnw -version'
             }
         }
 
@@ -37,14 +29,14 @@ pipeline {
         stage('Build') {
             steps {
                 echo "--- Building project ---"
-                sh 'mvn clean package -DskipTests'
+                sh './mvnw clean package -DskipTests'
             }
         }
 
         stage('Test') {
             steps {
                 echo "--- Running tests ---"
-                sh 'mvn test'
+                sh './mvnw test'
             }
         }
     }
