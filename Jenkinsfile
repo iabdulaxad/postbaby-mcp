@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    tools {
+        jdk 'JDK17'  
+    }
+
     options {
         timestamps()
         timeout(time: 30, unit: 'MINUTES')
@@ -13,8 +17,8 @@ pipeline {
                 echo "--- Initializing Build ---"
                 echo "Workspace: ${env.WORKSPACE}"
                 echo "Build Number: ${env.BUILD_NUMBER}"
+                sh 'java -version'   // should now show 17
                 sh 'chmod +x mvnw'
-                sh 'java -version'
                 sh './mvnw -version'
             }
         }
