@@ -23,6 +23,7 @@ pipeline {
                 sh '"${JAVA_HOME}/bin/javac" -version'
                 sh 'chmod +x mvnw'
                 sh './mvnw -version'
+                sh 'newgrp docker'
             }
         }
 
@@ -57,7 +58,8 @@ pipeline {
         stage('Deploy') {
             steps {
                 echo "--- Deploying application ---"
-
+                
+                sh 'newgrp docker'
                 // Stop and remove old container if running
                 sh "docker stop ${CONTAINER_NAME} || true"
                 sh "docker rm ${CONTAINER_NAME} || true"
@@ -82,6 +84,7 @@ pipeline {
         stage('Cleanup') {
             steps {
                 echo "--- Cleaning up old Docker images ---"
+                sh 'newgrp docker'
                 sh "docker image prune -f"
                 sh "docker images ${IMAGE_NAME} --format '{{.Tag}}' | grep -v latest | sort -rn | tail -n +6 | xargs -I {} docker rmi ${IMAGE_NAME}:{} || true"
             }
