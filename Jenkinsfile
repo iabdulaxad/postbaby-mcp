@@ -51,9 +51,10 @@ pipeline {
             steps {
                 echo "--- Deploying application ---"
                 sh 'fuser -k ${APP_PORT}/tcp || true'
-                sh 'BUILD_ID=dontKillMe nohup $JAVA_HOME/bin/java -jar ${APP_JAR} --server.port=${APP_PORT} --server.address=0.0.0.0 > app.log 2>&1 &'
+                sh 'JENKINS_NODE_COOKIE=dontKillMe nohup $JAVA_HOME/bin/java -jar ${APP_JAR} --server.port=${APP_PORT} --server.address=0.0.0.0 > app.log 2>&1 &'
                 sh 'sleep 10'
                 sh 'curl -v http://localhost:${APP_PORT}/actuator/health || (cat app.log && exit 1)'
+                sh 'ps aux | grep ${APP_JAR} | grep -v grep || (echo "Process not found after deployment" && exit 1)'
                 echo "--- App is running on port ${APP_PORT} ---"
             }
         }
