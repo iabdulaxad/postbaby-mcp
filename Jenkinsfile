@@ -47,15 +47,28 @@ pipeline {
             }
         }
 
+        stage('Build Image') {
+            steps {
+                echo "--- Building Docker Image ---"
+                sh 'docker build -t postbaby-mcp:${BUILD_NUMBER} .'
+            }
+        }
+
         stage('Deploy') {
             steps {
-                echo "--- Deploying application ---"
-                sh 'fuser -k ${APP_PORT}/tcp || true'
-                sh 'JENKINS_NODE_COOKIE=dontKillMe nohup $JAVA_HOME/bin/java -jar ${APP_JAR} --server.port=${APP_PORT} --server.address=0.0.0.0 > app.log 2>&1 &'
+                echo "--- Deploying application to Docker ---"
+                sh 'docker stop postbaby-mcp || true'
+                sh 'docker rm postbaby-mcp || true'
+                sh '''
+                    docker run -d \
+                        --name postbaby-mcp \
+                        --restart always \
+                        -p 8000:8000 \
+                        postbaby-mcp:${BUILD_NUMBER}
+                '''
                 sh 'sleep 10'
-                sh 'curl -v http://localhost:${APP_PORT}/actuator/health || (cat app.log && exit 1)'
-                sh 'ps aux | grep ${APP_JAR} | grep -v grep || (echo "Process not found after deployment" && exit 1)'
-                echo "--- App is running on port ${APP_PORT} ---"
+                sh 'curl -v http://localhost:8000/actuator/health || (docker logs postbaby-mcp && exit 1)'
+                echo "--- App is running on port 8000 ---"
             }
         }
     }
