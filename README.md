@@ -1,6 +1,8 @@
-# Function project
+## Build Status
 
 [<img alt="Build Status" src="http://116.203.53.111:8080/buildStatus/icon?job=Version-1"/>](http://116.203.53.111:8080/job/Version-1/)
+
+# Function project
 
 Welcome to your new Function project!
 
