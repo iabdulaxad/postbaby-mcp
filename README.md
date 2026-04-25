@@ -1,6 +1,6 @@
 # Function project
 
-[![Build Status](http://116.203.53.111:8080/buildStatus/icon?job=Version-1)](http://116.203.53.111:8080/job/Version-1/)
+[<img alt="Build Status" src="http://116.203.53.111:8080/buildStatus/icon?job=Version-1"/>](http://116.203.53.111:8080/job/Version-1/)
 
 Welcome to your new Function project!
 

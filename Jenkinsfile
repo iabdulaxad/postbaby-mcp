@@ -2,11 +2,12 @@ pipeline {
     agent any
 
     environment {
-        JAVA_HOME      = '/usr/lib/jvm/java-21-openjdk-amd64'
-        MAVEN_COMPILER = '/usr/lib/jvm/java-21-openjdk-amd64/bin/javac'
-        MAVEN_OPTS     = '-Dmaven.compiler.fork=true -Dmaven.compiler.executable=/usr/lib/jvm/java-21-openjdk-amd64/bin/javac'
-        APP_PORT       = '8000'
-        APP_JAR        = 'target/function-0.0.1-SNAPSHOT.jar'
+        JAVA_HOME = '/usr/lib/jvm/java-21-openjdk-amd64'
+        MAVEN_OPTS = '-Dmaven.compiler.fork=true -Dmaven.compiler.executable=/usr/lib/jvm/java-21-openjdk-amd64/bin/javac'
+        APP_PORT  = '8000'
+        APP_JAR   = 'target/function-0.0.1-SNAPSHOT.jar'
+        IMAGE_NAME = 'postbaby-mcp'
+        CONTAINER_NAME = 'postbaby-mcp'
     }
 
     options {
@@ -18,9 +19,8 @@ pipeline {
     stages {
         stage('Initialize') {
             steps {
-                echo "--- Initializing Build ---"
-                sh 'echo "JAVA_HOME=$JAVA_HOME"'
-                sh '$JAVA_HOME/bin/javac -version'
+                echo "--- Initializing Build #${BUILD_NUMBER} ---"
+                sh '"${JAVA_HOME}/bin/javac" -version'
                 sh 'chmod +x mvnw'
                 sh './mvnw -version'
             }
@@ -50,37 +50,59 @@ pipeline {
         stage('Build Image') {
             steps {
                 echo "--- Building Docker Image ---"
-                sh 'docker build -t postbaby-mcp:${BUILD_NUMBER} .'
+                sh "docker build -t ${IMAGE_NAME}:${BUILD_NUMBER} -t ${IMAGE_NAME}:latest ."
             }
         }
 
         stage('Deploy') {
             steps {
-                echo "--- Deploying application to Docker ---"
-                sh 'docker stop postbaby-mcp || true'
-                sh 'docker rm postbaby-mcp || true'
-                sh '''
+                echo "--- Deploying application ---"
+
+                // Stop and remove old container if running
+                sh "docker stop ${CONTAINER_NAME} || true"
+                sh "docker rm ${CONTAINER_NAME} || true"
+
+                // Run new container
+                sh """
                     docker run -d \
-                        --name postbaby-mcp \
+                        --name ${CONTAINER_NAME} \
                         --restart always \
-                        -p 8000:8000 \
-                        postbaby-mcp:${BUILD_NUMBER}
-                '''
-                sh 'sleep 10'
-                sh 'curl -v http://localhost:8000/actuator/health || (docker logs postbaby-mcp && exit 1)'
-                echo "--- App is running on port 8000 ---"
+                        -p ${APP_PORT}:${APP_PORT} \
+                        ${IMAGE_NAME}:${BUILD_NUMBER}
+                """
+
+                // Wait for app to start, then health check
+                sh "sleep 10"
+                sh "curl -sf http://localhost:${APP_PORT}/actuator/health || (docker logs ${CONTAINER_NAME} && exit 1)"
+
+                echo "--- App is running on port ${APP_PORT} ---"
+            }
+        }
+
+        stage('Cleanup') {
+            steps {
+                echo "--- Cleaning up old Docker images ---"
+                sh "docker image prune -f"
+                sh "docker images ${IMAGE_NAME} --format '{{.Tag}}' | grep -v latest | sort -rn | tail -n +6 | xargs -I {} docker rmi ${IMAGE_NAME}:{} || true"
             }
         }
     }
 
     post {
         always {
-            echo "--- Execution Finished ---"
+            echo "--- Pipeline Finished: Build #${BUILD_NUMBER} ---"
             junit testResults: 'target/surefire-reports/*.xml', allowEmptyResults: true
-            archiveArtifacts artifacts: 'target/*.jar, app.log', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'target/*.jar', allowEmptyArchive: true
         }
-        success { echo "SUCCESS: Build, tests, and deployment passed!" }
-        failure { echo "FAILURE: Something failed. Check logs for details." }
-        unstable { echo "UNSTABLE: Some tests failed." }
+        success {
+            echo "SUCCESS: Build #${BUILD_NUMBER} deployed successfully!"
+        }
+        failure {
+            echo "FAILURE: Build #${BUILD_NUMBER} failed. Collecting logs..."
+            sh "docker logs ${CONTAINER_NAME} || true"
+        }
+        unstable {
+            echo "UNSTABLE: Build #${BUILD_NUMBER} has test failures."
+        }
     }
 }
