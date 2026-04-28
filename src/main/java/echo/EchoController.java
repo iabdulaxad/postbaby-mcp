@@ -32,8 +32,8 @@ public class EchoController {
     return ResponseEntity.ok(body);
   }
 
-  @GetMapping({"readiness", "/liveness"})
-  public ResponseEntity<String> readiness() {
-    return ResponseEntity.ok("OK");
+  @GetMapping({"/readiness", "/liveness"})
+  public ResponseEntity<Map<String, String>> readiness() {
+    return ResponseEntity.ok(Map.of("status", "ok"));
   }
 }

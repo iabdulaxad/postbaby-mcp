@@ -18,37 +18,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-/**
- * Provider backed by the u-code runtime API, mirroring the official
- * <a href="https://github.com/Ucode-io/ucode_sdk">ucode-io/ucode_sdk</a> Go client.
- *
- * <h3>Auth</h3>
- * Two headers are sent per request:
- * <pre>
- *   authorization: API-KEY
- *   X-API-KEY:     &lt;appId&gt;
- * </pre>
- * ({@code environment-id} is optional — passed through when supplied but the SDK does not require it.)
- *
- * <h3>Base URL</h3>
- * Defaults to {@code https://api.client.u-code.io}. Override via
- * {@code -Ducode.base-url=...} JVM system property if your u-code app uses a
- * custom domain (each project can have its own BaseURL).
- *
- * <h3>Endpoints</h3>
- * All CRUD goes through {@code /v2/items/{collection}}:
- * <ul>
- *   <li>GET    /v2/items/{c}?from-ofs=true&amp;data=&lt;url-encoded-json&gt;&amp;offset=N&amp;limit=N</li>
- *   <li>POST   /v2/items/{c}?from-ofs=true   — create</li>
- *   <li>PUT    /v2/items/{c}?from-ofs=true   — update (guid required in body)</li>
- *   <li>DELETE /v2/items/{c}/{guid}?from-ofs=true</li>
- *   <li>POST   /v2/items/{c}/aggregation     — pipeline queries</li>
- * </ul>
- *
- * <p>Note: the runtime API does not expose a "list all tables" endpoint.
- * {@link #listTables} and {@link #getTableSchema} therefore throw
- * {@link UnsupportedOperationException}.
- */
 @Component
 public class UCodeProvider implements DatabaseProvider {
 
@@ -90,8 +59,8 @@ public class UCodeProvider implements DatabaseProvider {
             .body(body == null ? "" : body)
             .retrieve()
             .toEntity(Map.class);
-        Map<?, ?> raw = resp.getBody();
-        return raw == null ? Map.of() : (Map<String, Object>) raw;
+        Map<String, Object> raw = resp.getBody();
+        return raw == null ? Map.of() : raw;
     }
 
     @Override
@@ -102,11 +71,6 @@ public class UCodeProvider implements DatabaseProvider {
                 + "(Discovery is only available from the u-code admin console, which requires a user JWT.)");
     }
 
-    /**
-     * u-code has no schema endpoint at the runtime API, so we infer the schema
-     * by fetching one row and reading its keys + value types. Good enough to
-     * generate Postman request bodies.
-     */
     @Override
     public TableInfo getTableSchema(ConnectionParams params, String table) throws JsonProcessingException {
         List<Map<String, Object>> sample = select(params, table, null, null, 1, 0);
@@ -139,7 +103,6 @@ public class UCodeProvider implements DatabaseProvider {
             ConnectionParams params, String table, List<String> columns,
             Map<String, Object> where, Integer limit, Integer offset) throws JsonProcessingException {
 
-        // Build the 'data' query-string parameter the SDK sends.
         Map<String, Object> data = new LinkedHashMap<>();
         if (where != null && !where.isEmpty()) data.put("data", where); // SDK wraps filters under "data"
         if (columns != null && !columns.isEmpty()) data.put("columns", columns);
@@ -170,8 +133,7 @@ public class UCodeProvider implements DatabaseProvider {
             ConnectionParams params, String table,
             Map<String, Object> values, Map<String, Object> where) {
         String uri = baseUrl() + "/v2/items/" + table + "?from-ofs=true";
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.putAll(values);
+      Map<String, Object> payload = new LinkedHashMap<>(values);
         if (where != null) payload.putAll(where); // must include "guid"
         Map<String, Object> body = Map.of("data", payload);
         Map<String, Object> resp = exchange(HttpMethod.PUT, uri, authHeaders(params), body);
@@ -191,11 +153,8 @@ public class UCodeProvider implements DatabaseProvider {
         return Map.of("status", status == null ? "done" : status.toString());
     }
 
-    // ---------- helpers ----------
 
-    @SuppressWarnings("unchecked")
     private static List<Map<String, Object>> extractRows(Map<String, Object> resp) {
-        // u-code response shape: { data: { data: { response: [...] } }, status: ... }
         Object data = resp.get("data");
         if (data instanceof Map<?, ?> d1) {
             Object inner = d1.get("data");

@@ -20,10 +20,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-/**
- * Direct JDBC access. Identifiers are quoted; values are bound via PreparedStatement.
- * Values are coerced into JSON-friendly forms so Jackson can serialize them.
- */
+
 @Component
 public class PostgresProvider implements DatabaseProvider {
 
@@ -32,7 +29,7 @@ public class PostgresProvider implements DatabaseProvider {
         return params.isPostgres();
     }
 
-    private Connection open(ConnectionParams p) throws SQLException {
+    protected Connection open(ConnectionParams p) throws SQLException {
         String url = "jdbc:postgresql://" + p.pgHost() + ":"
             + (p.pgPort() == null ? 5432 : p.pgPort()) + "/" + p.pgDatabase();
         return DriverManager.getConnection(url, p.pgUser(), p.pgPassword());
@@ -123,15 +120,25 @@ public class PostgresProvider implements DatabaseProvider {
             binds.add(e.getValue());
             first = false;
         }
-        sql.append(") VALUES (").append(placeholders).append(") RETURNING *");
+        sql.append(") VALUES (").append(placeholders).append(')');
+        String finalSql = wrapInsertReturning(sql.toString());
 
-        try (Connection c = open(params); PreparedStatement ps = c.prepareStatement(sql.toString())) {
+        try (Connection c = open(params); PreparedStatement ps = c.prepareStatement(finalSql)) {
             bind(ps, binds);
             try (ResultSet rs = ps.executeQuery()) {
                 List<Map<String, Object>> rows = readAll(rs);
                 return rows.isEmpty() ? Map.of() : rows.get(0);
             }
         }
+    }
+
+    /**
+     * Wraps an INSERT statement so the executed query returns the inserted row.
+     * Defaults to PostgreSQL's {@code RETURNING *}; tests may override to use a
+     * portable equivalent (e.g. H2's {@code SELECT * FROM FINAL TABLE (...)}).
+     */
+    protected String wrapInsertReturning(String insertSql) {
+        return insertSql + " RETURNING *";
     }
 
     @Override
